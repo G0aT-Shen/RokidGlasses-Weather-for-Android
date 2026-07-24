@@ -1,0 +1,9 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/weather/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "my-rokid-app"
+  }
+}

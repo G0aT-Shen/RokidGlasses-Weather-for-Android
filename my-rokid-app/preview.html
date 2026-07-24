@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>天气卡片预览 — AIUI Weather Card</title>
+<style>
+  :root {
+    --green: #40FF5E;
+    --green-18: rgba(7, 193, 96, 0.18);
+    --green-05: rgba(7, 193, 96, 0.05);
+    --green-02: rgba(7, 193, 96, 0.02);
+    --border: rgba(64, 255, 94, 0.12);
+    --card-bg: #0a0a0a;
+    --glass: rgba(255,255,255,0.04);
+    --text-dim: rgba(255,255,255,0.4);
+    --text-mid: rgba(255,255,255,0.6);
+    --text-main: rgba(255,255,255,0.85);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--card-bg);
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+    min-height: 100vh;
+  }
+  .preview-wrapper {
+    width: 100%;
+    max-width: 400px;
+  }
+  .selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .selector input {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(64,255,94,0.2);
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+  }
+  .selector input:focus {
+    border-color: var(--green);
+  }
+  .selector button {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: 1px solid rgba(64,255,94,0.25);
+    background: rgba(64,255,94,0.08);
+    color: var(--green);
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .selector button:hover {
+    background: rgba(64,255,94,0.15);
+  }
+  .hint {
+    font-size: 12px;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 8px;
+  }
+  .server-hint {
+    font-size: 11px;
+    color: rgba(255, 180, 60, 0.75);
+    background: rgba(255, 180, 60, 0.08);
+    border: 1px solid rgba(255, 180, 60, 0.2);
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  .server-hint code {
+    background: rgba(0,0,0,0.3);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 11px;
+  }
+
+  /* === 天气卡片（与 index.ink 的 <style> 完全对应） === */
+  .weather-card {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    border-radius: 20px;
+    background: linear-gradient(160deg, rgba(7,193,96,0.18) 0%, rgba(7,193,96,0.05) 60%, rgba(7,193,96,0.02) 100%);
+    border: 1px solid rgba(64,255,94,0.12);
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 16px;
+  }
+  .city-name { font-size: 22px; font-weight: 700; color: #fff; }
+  .update-time { font-size: 12px; color: rgba(255,255,255,0.45); }
+
+  .loading-area { display: flex; justify-content: center; padding: 32px 0; }
+  .loading-text { font-size: 15px; color: rgba(64,255,94,0.7); }
+  .error-area { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px 0; }
+  .error-text { font-size: 15px; color: rgba(255,255,255,0.6); }
+  .retry-btn {
+    color: var(--green);
+    border: 1px solid rgba(64,255,94,0.3);
+    border-radius: 10px;
+    padding: 6px 20px;
+    background: transparent;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .current-weather {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 16px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+  }
+  .weather-icon { font-size: 48px; line-height: 48px; }
+  .temp-row { display: flex; align-items: flex-start; }
+  .temperature { font-size: 48px; font-weight: 300; color: #fff; line-height: 48px; }
+  .unit { font-size: 18px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+  .condition { font-size: 16px; color: rgba(255,255,255,0.75); margin-top: 4px; }
+
+  .metrics {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+  }
+  .metric-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .metric-label { font-size: 12px; color: rgba(255,255,255,0.4); }
+  .metric-value { font-size: 16px; font-weight: 600; color: rgba(255,255,255,0.85); }
+
+  .forecast { display: flex; justify-content: space-between; margin-bottom: 18px; }
+  .forecast-item { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+  .forecast-day { font-size: 12px; color: rgba(255,255,255,0.4); }
+  .forecast-icon { font-size: 22px; }
+  .forecast-temp { font-size: 13px; color: rgba(255,255,255,0.7); }
+
+  .refresh-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 10px 0;
+    border-radius: 12px;
+    border: 1px solid rgba(64,255,94,0.25);
+    background: rgba(64,255,94,0.06);
+    color: var(--green);
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(64,255,94,0.3);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="preview-wrapper">
+
+  <div class="selector">
+    <input id="cityInput" type="text" value="杭州" placeholder="输入城市名，如：北京、上海、深圳">
+    <button id="queryBtn">查询天气</button>
+  </div>
+  <div class="hint">支持 28 个主要中国城市（中英文均可）</div>
+  <div class="server-hint">
+    ⚠️ 请通过 <code>http://localhost:3000</code> 访问,不要直接双击 HTML 文件(file:// 协议会被浏览器 CORS 拦截)
+  </div>
+
+  <div id="cardRoot"></div>
+
+</div>
+
+<script>
+// ============================================================
+// 与 pages/weather/index.ink 中的 fetchWeather 逻辑完全一致
+// ============================================================
+
+const cityToEnglish = (name) => {
+  const map = {
+    '北京':'Beijing','上海':'Shanghai','广州':'Guangzhou','深圳':'Shenzhen',
+    '杭州':'Hangzhou','成都':'Chengdu','武汉':'Wuhan','南京':'Nanjing',
+    '重庆':'Chongqing','天津':'Tianjin','苏州':'Suzhou','西安':"Xi'an",
+    '长沙':'Changsha','郑州':'Zhengzhou','青岛':'Qingdao','大连':'Dalian',
+    '厦门':'Xiamen','福州':'Fuzhou','合肥':'Hefei','济南':'Jinan',
+    '哈尔滨':'Harbin','昆明':'Kunming','贵阳':'Guiyang','南宁':'Nanning',
+    '沈阳':'Shenyang','长春':'Changchun','太原':'Taiyuan','石家庄':'Shijiazhuang'
+  };
+  return map[name] || name;
+};
+
+const weatherToChinese = (desc) => {
+  const lower = desc.toLowerCase();
+  if (lower.includes('thunder'))    return { condition:'雷阵雨',icon:'⛈️' };
+  if (lower.includes('heavy rain')||lower.includes('torrential'))
+                                     return { condition:'大雨',icon:'🌧️' };
+  if (lower.includes('moderate rain')) return { condition:'中雨',icon:'🌧️' };
+  if (lower.includes('light rain')||lower.includes('patchy rain')||lower.includes('drizzle'))
+                                     return { condition:'小雨',icon:'🌦️' };
+  if (lower.includes('rain'))       return { condition:'雨',icon:'🌧️' };
+  if (lower.includes('snow')||lower.includes('sleet')||lower.includes('ice'))
+                                     return { condition:'雪',icon:'🌨️' };
+  if (lower.includes('fog')||lower.includes('mist'))
+                                     return { condition:'雾',icon:'🌫️' };
+  if (lower.includes('overcast'))   return { condition:'阴',icon:'☁️' };
+  if (lower.includes('cloudy'))     return { condition:'多云',icon:'⛅' };
+  if (lower.includes('sunny')||lower.includes('clear'))
+                                     return { condition:'晴',icon:'☀️' };
+  return { condition:desc,icon:'🌤️' };
+};
+
+const windToChinese = (dir) => {
+  const map = {
+    'N':'北风','NNE':'东北偏北风','NE':'东北风','ENE':'东北偏东风',
+    'E':'东风','ESE':'东南偏东风','SE':'东南风','SSE':'东南偏南风',
+    'S':'南风','SSW':'西南偏南风','SW':'西南风','WSW':'西南偏西风',
+    'W':'西风','WNW':'西北偏西风','NW':'西北风','NNW':'西北偏北风'
+  };
+  return map[dir] || dir;
+};
+
+const getNow = () => {
+  const d = new Date();
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+};
+
+const fetchWeather = async (city) => {
+  const eng = cityToEnglish(city);
+  const res = await fetch(`https://wttr.in/${encodeURIComponent(eng)}?format=j1`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  const cur = data.current_condition[0];
+  const { condition, icon } = weatherToChinese(cur.weatherDesc[0].value);
+
+  const forecastLabels = ['明天','后天','大后天'];
+  const forecast = data.weather.slice(1,4).map((day,i) => {
+    const midday = day.hourly[4] || day.hourly[0];
+    const fi = weatherToChinese(midday.weatherDesc[0].value);
+    return {
+      label: forecastLabels[i],
+      icon: fi.icon,
+      high: parseInt(day.maxtempC),
+      low: parseInt(day.mintempC)
+    };
+  });
+
+  return {
+    city, condition, icon,
+    temperature: parseInt(cur.temp_C),
+    feelLike: parseInt(cur.FeelsLikeC),
+    humidity: parseInt(cur.humidity),
+    wind: `${windToChinese(cur.winddir16Point)} ${cur.windspeedKmph}km/h`,
+    updateTime: getNow(),
+    forecast
+  };
+};
+
+// ============================================================
+// 渲染
+// ============================================================
+const root = document.getElementById('cardRoot');
+const inputEl = document.getElementById('cityInput');
+const btn = document.getElementById('queryBtn');
+
+const renderLoading = () => {
+  root.innerHTML = `
+    <div class="weather-card">
+      <div class="loading-area">
+        <span class="spinner"></span>
+        <text class="loading-text">正在查询天气...</text>
+      </div>
+    </div>`;
+};
+
+const renderError = (msg) => {
+  root.innerHTML = `
+    <div class="weather-card">
+      <div class="error-area">
+        <div class="error-text">😵 ${msg}</div>
+        <button class="retry-btn" onclick="queryWeather()">重试</button>
+      </div>
+    </div>`;
+};
+
+const renderCard = (w) => {
+  root.innerHTML = `
+    <div class="weather-card">
+      <div class="card-header">
+        <span class="city-name">${w.city}</span>
+        <span class="update-time">${w.updateTime} 更新</span>
+      </div>
+      <div class="current-weather">
+        <span class="weather-icon">${w.icon}</span>
+        <div>
+          <div class="temp-row">
+            <span class="temperature">${w.temperature}</span>
+            <span class="unit">°C</span>
+          </div>
+          <div class="condition">${w.condition}</div>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric-item">
+          <span class="metric-label">体感温度</span>
+          <span class="metric-value">${w.feelLike}°</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">湿度</span>
+          <span class="metric-value">${w.humidity}%</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">风力</span>
+          <span class="metric-value">${w.wind}</span>
+        </div>
+      </div>
+      <div class="forecast">
+        ${w.forecast.map(f => `
+          <div class="forecast-item">
+            <span class="forecast-day">${f.label}</span>
+            <span class="forecast-icon">${f.icon}</span>
+            <span class="forecast-temp">${f.low}°~${f.high}°</span>
+          </div>
+        `).join('')}
+      </div>
+      <button class="refresh-btn" onclick="queryWeather()">刷新天气</button>
+    </div>`;
+};
+
+const queryWeather = async () => {
+  const city = inputEl.value.trim() || '杭州';
+  renderLoading();
+  try {
+    const w = await fetchWeather(city);
+    renderCard(w);
+  } catch (e) {
+    // 显示具体错误,方便排查(file:// 协议 CORS 错误会很明显)
+    let detail = e.message || String(e);
+    if (location.protocol === 'file:') {
+      detail = '检测到 file:// 协议 — 浏览器拦截了跨域请求。请改用 http://localhost:3000 访问';
+    } else if (e instanceof TypeError) {
+      detail = '网络错误: ' + detail + '(可能是 CORS 拦截)';
+    }
+    renderError(detail);
+  }
+};
+
+// 页面加载自动查询
+queryWeather();
+
+// 回车键查询
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') queryWeather();
+});
+</script>
+</body>
+</html>
