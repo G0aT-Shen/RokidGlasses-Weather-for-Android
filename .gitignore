@@ -1,36 +1,32 @@
-# ===== Android / Gradle =====
 *.iml
 .gradle/
-build/
-/captures
+.kotlin/
+**/build/
+captures/
 .externalNativeBuild
 .cxx
 local.properties
+keystore.properties
+*.jks
+*.keystore
 
-# ===== IDE =====
-.idea/caches/
-.idea/libraries/
-.idea/modules.xml
-.idea/workspace.xml
-.idea/navEditor.xml
-.idea/assetWizardSettings.xml
+.idea/
 .vscode/
 
-# ===== OS =====
 .DS_Store
 Thumbs.db
 
-# ===== Node.js =====
 node_modules/
 npm-debug.log*
+yarn-error.log*
 
-# ===== Build outputs =====
 *.apk
 *.aab
 *.ap_
+*.log
+.env
+.env.*
 
-# ===== WorkBuddy =====
+.agents/
+.codex/
 .workbuddy/
-
-# ===== Keep important IDE configs =====
-!.idea/.gitignore
